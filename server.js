@@ -15,20 +15,21 @@ const authRoutes = require("./routes/auth");
 dotenv.config();
 const app = express();
 
+// ==============================================
+// ✅ CORS CONFIGURACIÓN OFICIAL (para Netlify y local)
+// ==============================================
 app.use(cors({
-  origin: ["https://pipiplanner.netlify.app"],
+  origin: ["https://pipiplanner.netlify.app", "http://localhost:5500"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
-
-
 // ==============================================
-// 🧠 PARSEO DE REQUESTS (muy importante para req.body)
+// 🧠 PARSEO DE REQUESTS
 // ==============================================
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // ✅ necesario para interpretar JSON y formularios
+app.use(express.urlencoded({ extended: true }));
 
 // ==============================================
 // 🔍 LOG DE DEPURACIÓN
@@ -43,6 +44,17 @@ app.use((req, res, next) => {
 // ==============================================
 async function initTables() {
   try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Tabla 'admins' creada/verificada correctamente.");
+
     await db.query(`
       CREATE TABLE IF NOT EXISTS planner (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,7 +122,7 @@ async function initTables() {
       );
     `);
 
-    console.log("🧱 Tablas verificadas o creadas correctamente.");
+    console.log("🧱 Todas las tablas verificadas correctamente.");
   } catch (err) {
     console.error("❌ Error creando tablas:", err.message);
   }
@@ -139,7 +151,7 @@ app.use((err, req, res, next) => {
 });
 
 // ==============================================
-// 🔥 INICIAR SERVIDOR (compatibilidad con Railway)
+// 🔥 INICIAR SERVIDOR (para Railway)
 // ==============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
