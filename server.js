@@ -1,3 +1,4 @@
+app.use("/api/auth", authRoutes);
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -5,6 +6,8 @@ const db = require("./db"); // ✅ usamos el pool existente
 const plannerRoutes = require("./routes/planner");
 const clientRoutes = require("./routes/clients");
 const wellnessRoutes = require("./routes/wellness"); // 🧠 mood, timeline, habits, tasks
+const authRoutes = require("./routes/auth");
+
 
 dotenv.config();
 
@@ -100,6 +103,13 @@ app.get("/", (req, res) => res.json({ message: "Planner API funcionando" }));
 app.use("/api/planner", plannerRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/wellness", wellnessRoutes);
+
+
+// Middleware global de manejo de errores
+app.use((err, req, res, next) => {
+  console.error("❌ Error interno:", err);
+  res.status(500).json({ error: "Error interno del servidor" });
+});
 
 // ==============================================
 // 🔥 Servidor
