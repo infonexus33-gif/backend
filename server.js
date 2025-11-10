@@ -1,12 +1,8 @@
-// ==============================================
-// 🌐 DEPENDENCIAS Y CONFIGURACIÓN
-// ==============================================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { connectWithRetry, getDB } = require("./db");
 
-// 🔹 Rutas
 const plannerRoutes = require("./routes/planner");
 const clientRoutes = require("./routes/clients");
 const wellnessRoutes = require("./routes/wellness");
@@ -15,9 +11,6 @@ const authRoutes = require("./routes/auth");
 dotenv.config();
 const app = express();
 
-// ==============================================
-// ✅ CORS CONFIGURACIÓN OFICIAL (para Netlify y local)
-// ==============================================
 app.use(cors({
   origin: ["https://pipiplanner.netlify.app", "http://localhost:5500"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -25,32 +18,20 @@ app.use(cors({
   credentials: true
 }));
 
-// ==============================================
-// 🧠 PARSEO DE REQUESTS
-// ==============================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==============================================
-// 🔍 LOG DE DEPURACIÓN
-// ==============================================
 app.use((req, res, next) => {
   console.log(`🛰️ ${req.method} ${req.url} desde ${req.headers.origin}`);
   next();
 });
 
-// ==============================================
-// 🚀 INICIO CONTROLADO CON CONEXIÓN SEGURA
-// ==============================================
 async function startServer() {
   try {
-    // 🔗 Conexión con retry a MySQL
     await connectWithRetry();
     const db = await getDB();
+    global.db = db;
 
-    // ==============================================
-    // 🧩 CREAR TABLAS SI NO EXISTEN
-    // ==============================================
     await db.query(`
       CREATE TABLE IF NOT EXISTS admins (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -60,7 +41,6 @@ async function startServer() {
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log("✅ Tabla 'admins' creada/verificada correctamente.");
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS planner (
@@ -129,11 +109,8 @@ async function startServer() {
       );
     `);
 
-    console.log("🧱 Todas las tablas verificadas correctamente.");
+    console.log("🧱 Tablas verificadas correctamente.");
 
-    // ==============================================
-    // 🚀 RUTAS PRINCIPALES
-    // ==============================================
     app.get("/", (req, res) => {
       res.json({ message: "Planner API funcionando correctamente 🚀" });
     });
@@ -143,23 +120,16 @@ async function startServer() {
     app.use("/api/clients", clientRoutes);
     app.use("/api/wellness", wellnessRoutes);
 
-    // ==============================================
-    // 🧨 MANEJO GLOBAL DE ERRORES
-    // ==============================================
     app.use((err, req, res, next) => {
       console.error("❌ Error interno:", err);
       res.status(500).json({ error: "Error interno del servidor" });
     });
 
-    // ==============================================
-    // 🔥 INICIAR SERVIDOR (para Railway)
-    // ==============================================
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
     });
 
-    // 🔄 Keep-alive cada 5 minutos para evitar cierre de MySQL
     setInterval(async () => {
       try {
         await db.query("SELECT 1");
@@ -167,7 +137,7 @@ async function startServer() {
       } catch (err) {
         console.error("⚠️ Error en keep-alive:", err.message);
       }
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 5 * 60 * 1000);
 
   } catch (err) {
     console.error("💥 Error crítico al iniciar servidor:", err.message);
