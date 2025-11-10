@@ -16,19 +16,20 @@ dotenv.config();
 const app = express();
 
 // ==============================================
-// ⚙️ CONFIGURAR CORS (para Netlify y local)
+// ⚙️ CONFIGURAR CORS (Netlify + Localhost)
 // ==============================================
-const corsOptions = {
-  origin: [
-    "https://pipiplanner.netlify.app", // ✅ dominio de tu frontend en Netlify
-    "http://localhost:5500",           // ✅ opcional para pruebas locales
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
+app.use(
+  cors({
+    origin: [
+      "https://pipiplanner.netlify.app", // ✅ dominio del frontend
+      "http://localhost:5500",           // ✅ desarrollo local
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // ==============================================
@@ -114,7 +115,9 @@ initTables();
 // ==============================================
 // 🚀 RUTAS PRINCIPALES
 // ==============================================
-app.get("/", (req, res) => res.json({ message: "Planner API funcionando" }));
+app.get("/", (req, res) => {
+  res.json({ message: "Planner API funcionando correctamente 🚀" });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/planner", plannerRoutes);
@@ -133,4 +136,6 @@ app.use((err, req, res, next) => {
 // 🔥 INICIAR SERVIDOR
 // ==============================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
