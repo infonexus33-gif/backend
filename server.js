@@ -11,6 +11,9 @@ const authRoutes = require("./routes/auth");
 dotenv.config();
 const app = express();
 
+// ==============================================
+// 🔒 CORS CONFIGURACIÓN (Netlify + Local)
+// ==============================================
 app.use(cors({
   origin: ["https://pipiplanner.netlify.app", "http://localhost:5500"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -18,29 +21,41 @@ app.use(cors({
   credentials: true
 }));
 
+// ==============================================
+// 🧠 PARSEO DE REQUESTS
+// ==============================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ==============================================
+// 🛰️ LOG DE REQUESTS
+// ==============================================
 app.use((req, res, next) => {
   console.log(`🛰️ ${req.method} ${req.url} desde ${req.headers.origin}`);
   next();
 });
 
+// ==============================================
+// 🚀 INICIO CONTROLADO CON CONEXIÓN A MYSQL
+// ==============================================
 async function startServer() {
   try {
     await connectWithRetry();
     const db = await getDB();
     global.db = db;
 
+    // ==========================================
+    // 🧱 TABLAS
+    // ==========================================
     await db.query(`
       CREATE TABLE IF NOT EXISTS admins (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        nombre VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE,
+        nombre VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log("✅ Tabla 'admins' verificada correctamente.");
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS planner (
@@ -111,6 +126,9 @@ async function startServer() {
 
     console.log("🧱 Tablas verificadas correctamente.");
 
+    // ==========================================
+    // 🌐 RUTAS
+    // ==========================================
     app.get("/", (req, res) => {
       res.json({ message: "Planner API funcionando correctamente 🚀" });
     });
@@ -120,16 +138,25 @@ async function startServer() {
     app.use("/api/clients", clientRoutes);
     app.use("/api/wellness", wellnessRoutes);
 
+    // ==========================================
+    // ⚠️ MANEJO DE ERRORES
+    // ==========================================
     app.use((err, req, res, next) => {
       console.error("❌ Error interno:", err);
       res.status(500).json({ error: "Error interno del servidor" });
     });
 
+    // ==========================================
+    // 🔥 INICIAR SERVIDOR
+    // ==========================================
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
     });
 
+    // ==========================================
+    // 🔄 KEEP-ALIVE MYSQL
+    // ==========================================
     setInterval(async () => {
       try {
         await db.query("SELECT 1");
@@ -137,7 +164,7 @@ async function startServer() {
       } catch (err) {
         console.error("⚠️ Error en keep-alive:", err.message);
       }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // Cada 5 minutos
 
   } catch (err) {
     console.error("💥 Error crítico al iniciar servidor:", err.message);
