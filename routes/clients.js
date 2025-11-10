@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const verificarToken = require("../middleware/auth");
+
 
 // Obtener todos los clientes
 router.get("/", (req, res) => {
@@ -101,3 +103,23 @@ router.get("/total/:year/:month", (req, res) => {
 
 
 module.exports = router;
+
+router.get("/", verificarToken, (req, res) => {
+  const adminId = req.admin.id;
+  const sql = "SELECT * FROM clients WHERE admin_id = ? ORDER BY nombre";
+  db.query(sql, [adminId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+router.post("/", verificarToken, (req, res) => {
+  const adminId = req.admin.id;
+  const { nombre, pago_mensual, pagado, inicio_proyecto, fin_proyecto, prioridad, descripcion } = req.body;
+  const sql = `INSERT INTO clients (nombre, pago_mensual, pagado, inicio_proyecto, fin_proyecto, prioridad, descripcion, admin_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  db.query(sql, [nombre, pago_mensual, pagado, inicio_proyecto, fin_proyecto, prioridad, descripcion, adminId], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: result.insertId, message: "Cliente agregado correctamente" });
+  });
+});

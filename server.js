@@ -1,9 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const mysql = require("mysql2"); // 🔹 Agregamos mysql2
+const db = require("./db"); // ✅ usamos el pool existente
 const plannerRoutes = require("./routes/planner");
 const clientRoutes = require("./routes/clients");
+const wellnessRoutes = require("./routes/wellness"); // 🧠 mood, timeline, habits, tasks
 
 dotenv.config();
 
@@ -11,66 +12,97 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Conexión a MySQL
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT
-});
+// ==============================================
+// 🧩 Crear tablas si no existen (una vez al iniciar)
+// ==============================================
+async function initTables() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS planner (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fecha VARCHAR(20),
+        hora VARCHAR(20),
+        formato VARCHAR(100),
+        copy TEXT,
+        link TEXT
+      );
+    `);
 
-connection.connect(err => {
-  if (err) {
-    console.error("❌ Error al conectar con MySQL:", err.message);
-    return;
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100),
+        pago_mensual DECIMAL(10,2),
+        pagado DECIMAL(10,2),
+        inicio_proyecto DATE,
+        fin_proyecto DATE,
+        prioridad ENUM('Baja','Media','Alta'),
+        descripcion TEXT
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS mood_tracker (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT DEFAULT 1,
+        date DATE NOT NULL,
+        mood INT NOT NULL,
+        energy INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_mood (user_id, date)
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS timeline_entries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT DEFAULT 1,
+        content TEXT NOT NULL,
+        date DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS habits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT DEFAULT 1,
+        day DATE NOT NULL,
+        completed BOOLEAN DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_habit (user_id, day)
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT DEFAULT 1,
+        categoria ENUM('Must','Should','Want') DEFAULT 'Should',
+        titulo VARCHAR(255) NOT NULL,
+        completada BOOLEAN DEFAULT 0,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log("🧱 Tablas verificadas o creadas correctamente.");
+  } catch (err) {
+    console.error("❌ Error creando tablas:", err.message);
   }
-  console.log("✅ Conectado a MySQL con éxito");
+}
 
-  // 🔹 Crear tablas si no existen
-  const sql1 = `
-    CREATE TABLE IF NOT EXISTS planner (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      fecha VARCHAR(20),
-      hora VARCHAR(20),
-      formato VARCHAR(100),
-      copy TEXT,
-      link TEXT
-    );
-  `;
-  const sql2 = `
-    CREATE TABLE IF NOT EXISTS clients (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100),
-      pago_mensual DECIMAL(10,2),
-      pagado DECIMAL(10,2),
-      inicio_proyecto DATE,
-      fin_proyecto DATE,
-      prioridad ENUM('Baja','Media','Alta'),
-      descripcion TEXT
-    );
-  `;
+initTables();
 
-  connection.query(sql1, err => {
-    if (err) console.error("❌ Error creando tabla planner:", err);
-  });
-  connection.query(sql2, err => {
-    if (err) console.error("❌ Error creando tabla clients:", err);
-  });
-
-  console.log("🧩 Tablas verificadas/creadas.");
-});
-
-// ✅ Rutas
-app.get("/", (req, res) => {
-  res.json({ message: "Planner API OK" });
-});
+// ==============================================
+// 🚀 Rutas
+// ==============================================
+app.get("/", (req, res) => res.json({ message: "Planner API funcionando" }));
 
 app.use("/api/planner", plannerRoutes);
 app.use("/api/clients", clientRoutes);
+app.use("/api/wellness", wellnessRoutes);
 
-// ✅ Servidor
+// ==============================================
+// 🔥 Servidor
+// ==============================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
