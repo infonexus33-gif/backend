@@ -1,22 +1,38 @@
-app.use("/api/auth", authRoutes);
+// ==============================================
+// 🌐 DEPENDENCIAS Y CONFIGURACIÓN
+// ==============================================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const db = require("./db"); // ✅ usamos el pool existente
+const db = require("./db");
+
+// 🔹 Rutas
 const plannerRoutes = require("./routes/planner");
 const clientRoutes = require("./routes/clients");
-const wellnessRoutes = require("./routes/wellness"); // 🧠 mood, timeline, habits, tasks
+const wellnessRoutes = require("./routes/wellness");
 const authRoutes = require("./routes/auth");
 
-
 dotenv.config();
-
 const app = express();
-app.use(cors());
+
+// ==============================================
+// ⚙️ CONFIGURAR CORS (para Netlify y local)
+// ==============================================
+const corsOptions = {
+  origin: [
+    "https://pipiplanner.netlify.app", // ✅ dominio de tu frontend en Netlify
+    "http://localhost:5500",           // ✅ opcional para pruebas locales
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ==============================================
-// 🧩 Crear tablas si no existen (una vez al iniciar)
+// 🧩 CREAR TABLAS SI NO EXISTEN
 // ==============================================
 async function initTables() {
   try {
@@ -96,23 +112,25 @@ async function initTables() {
 initTables();
 
 // ==============================================
-// 🚀 Rutas
+// 🚀 RUTAS PRINCIPALES
 // ==============================================
 app.get("/", (req, res) => res.json({ message: "Planner API funcionando" }));
 
+app.use("/api/auth", authRoutes);
 app.use("/api/planner", plannerRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/wellness", wellnessRoutes);
 
-
-// Middleware global de manejo de errores
+// ==============================================
+// 🧨 MANEJO GLOBAL DE ERRORES
+// ==============================================
 app.use((err, req, res, next) => {
   console.error("❌ Error interno:", err);
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
 // ==============================================
-// 🔥 Servidor
+// 🔥 INICIAR SERVIDOR
 // ==============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
