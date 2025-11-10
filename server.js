@@ -4,7 +4,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const db = require("./db");
+const { connectWithRetry, getDB } = require("./db");
 
 // 🔹 Rutas
 const plannerRoutes = require("./routes/planner");
@@ -40,15 +40,22 @@ app.use((req, res, next) => {
 });
 
 // ==============================================
-// 🧩 CREAR TABLAS SI NO EXISTEN
+// 🚀 INICIO CONTROLADO CON CONEXIÓN SEGURA
 // ==============================================
-async function initTables() {
+async function startServer() {
   try {
+    // 🔗 Conexión con retry a MySQL
+    await connectWithRetry();
+    const db = await getDB();
+
+    // ==============================================
+    // 🧩 CREAR TABLAS SI NO EXISTEN
+    // ==============================================
     await db.query(`
       CREATE TABLE IF NOT EXISTS admins (
         id INT AUTO_INCREMENT PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
+        email VARCHAR(100) UNIQUE,
         password VARCHAR(255) NOT NULL,
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -123,37 +130,49 @@ async function initTables() {
     `);
 
     console.log("🧱 Todas las tablas verificadas correctamente.");
+
+    // ==============================================
+    // 🚀 RUTAS PRINCIPALES
+    // ==============================================
+    app.get("/", (req, res) => {
+      res.json({ message: "Planner API funcionando correctamente 🚀" });
+    });
+
+    app.use("/api/auth", authRoutes);
+    app.use("/api/planner", plannerRoutes);
+    app.use("/api/clients", clientRoutes);
+    app.use("/api/wellness", wellnessRoutes);
+
+    // ==============================================
+    // 🧨 MANEJO GLOBAL DE ERRORES
+    // ==============================================
+    app.use((err, req, res, next) => {
+      console.error("❌ Error interno:", err);
+      res.status(500).json({ error: "Error interno del servidor" });
+    });
+
+    // ==============================================
+    // 🔥 INICIAR SERVIDOR (para Railway)
+    // ==============================================
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+    });
+
+    // 🔄 Keep-alive cada 5 minutos para evitar cierre de MySQL
+    setInterval(async () => {
+      try {
+        await db.query("SELECT 1");
+        console.log("💤 Keep-alive ejecutado correctamente");
+      } catch (err) {
+        console.error("⚠️ Error en keep-alive:", err.message);
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+
   } catch (err) {
-    console.error("❌ Error creando tablas:", err.message);
+    console.error("💥 Error crítico al iniciar servidor:", err.message);
+    process.exit(1);
   }
 }
 
-initTables();
-
-// ==============================================
-// 🚀 RUTAS PRINCIPALES
-// ==============================================
-app.get("/", (req, res) => {
-  res.json({ message: "Planner API funcionando correctamente 🚀" });
-});
-
-app.use("/api/auth", authRoutes);
-app.use("/api/planner", plannerRoutes);
-app.use("/api/clients", clientRoutes);
-app.use("/api/wellness", wellnessRoutes);
-
-// ==============================================
-// 🧨 MANEJO GLOBAL DE ERRORES
-// ==============================================
-app.use((err, req, res, next) => {
-  console.error("❌ Error interno:", err);
-  res.status(500).json({ error: "Error interno del servidor" });
-});
-
-// ==============================================
-// 🔥 INICIAR SERVIDOR (para Railway)
-// ==============================================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-});
+startServer();
