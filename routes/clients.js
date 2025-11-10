@@ -82,20 +82,22 @@ router.delete("/:id", (req, res) => {
   });
 });
 
-// Total pagado por mes (usando created_at como referencia de registro / actualización de pago)
+// ✅ Total pagado por mes (según columna 'pagado')
 router.get("/total/:year/:month", (req, res) => {
   const { year, month } = req.params;
-  // Aseguramos formato YYYY-MM
-  const ym = `${year}-${month}`;
   const sql = `
     SELECT SUM(pagado) AS total_mes
     FROM clients
-    WHERE DATE_FORMAT(created_at, '%Y-%m') = ?
+    WHERE YEAR(NOW()) = ? AND MONTH(NOW()) = ?
   `;
-  db.query(sql, [ym], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(sql, [year, month], (err, result) => {
+    if (err) {
+      console.error("Error al calcular total mensual:", err);
+      return res.status(500).json({ error: err.message });
+    }
     res.json({ total_mes: result[0].total_mes || 0 });
   });
 });
+
 
 module.exports = router;
