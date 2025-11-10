@@ -16,21 +16,36 @@ dotenv.config();
 const app = express();
 
 // ==============================================
-// ⚙️ CONFIGURAR CORS (Netlify + Localhost)
+// ⚙️ CONFIGURACIÓN CORS (completamente abierta para depurar)
 // ==============================================
-app.use(
-  cors({
-    origin: [
-      "https://pipiplanner.netlify.app", // ✅ dominio del frontend
-      "http://localhost:5500",           // ✅ desarrollo local
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  "https://pipiplanner.netlify.app",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json());
+
+// Log de depuración de requests
+app.use((req, res, next) => {
+  console.log(`🛰️ ${req.method} ${req.url} desde ${req.headers.origin}`);
+  next();
+});
 
 // ==============================================
 // 🧩 CREAR TABLAS SI NO EXISTEN
