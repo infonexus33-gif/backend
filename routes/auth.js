@@ -29,55 +29,34 @@ router.post("/register", async (req, res) => {
 
 // 🔐 LOGIN ADMIN
 router.post("/login", (req, res) => {
-  const { nombre, password } = req.body;
+  const { nombre, username, password } = req.body;
+  const userField = username || nombre;
 
-  if (!nombre || !password) {
+  if (!userField || !password) {
     return res.status(400).json({ error: "Faltan campos." });
   }
 
-  const sql = "SELECT * FROM admins WHERE nombre = ?";
-  db.query(sql, [nombre], async (err, results) => {
-    try {
-      if (err) {
-        console.error("❌ Error en DB:", err);
-        return res.status(500).json({ error: err.message });
-      }
+  const sql = "SELECT * FROM admins WHERE nombre = ? OR username = ?";
+  db.query(sql, [userField, userField], async (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!results.length) return res.status(401).json({ error: "Usuario no encontrado." });
 
-      if (!results.length) {
-        console.warn("⚠️ Usuario no encontrado:", nombre);
-        return res.status(401).json({ error: "Usuario no encontrado." });
-      }
+    const admin = results[0];
+    const match = await bcrypt.compare(password, admin.password);
+    if (!match) return res.status(401).json({ error: "Contraseña incorrecta." });
 
-      const admin = results[0];
-      const match = await bcrypt.compare(password, admin.password);
+    const token = jwt.sign(
+      { id: admin.id, nombre: admin.nombre, role: admin.role, plan: admin.plan },
+      SECRET,
+      { expiresIn: "12h" }
+    );
 
-      if (!match) {
-        console.warn("⚠️ Contraseña incorrecta para:", nombre);
-        return res.status(401).json({ error: "Contraseña incorrecta." });
-      }
-
-      const token = jwt.sign(
-        {
-          id: admin.id,
-          nombre: admin.nombre,
-          role: admin.role,
-          plan: admin.plan,
-        },
-        SECRET,
-        { expiresIn: "12h" }
-      );
-
-      console.log("✅ Login exitoso de:", nombre);
-      res.json({
-        token,
-        nombre: admin.nombre,
-        role: admin.role,
-        plan: admin.plan,
-      });
-    } catch (error) {
-      console.error("💥 Error inesperado en login:", error);
-      res.status(500).json({ error: "Error interno del servidor" });
-    }
+    res.json({
+      token,
+      nombre: admin.nombre,
+      role: admin.role,
+      plan: admin.plan,
+    });
   });
 });
 
