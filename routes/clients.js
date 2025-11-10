@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const verificarToken = require("../middleware/auth");
+const verificarToken = require("../middleware/authentication");
 
 
 // Obtener todos los clientes
