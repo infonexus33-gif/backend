@@ -39,9 +39,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==============================================
+// 🧠 PARSEO DE REQUESTS (muy importante para req.body)
+// ==============================================
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // ✅ necesario para interpretar JSON y formularios
 
-// Log de depuración de requests
+// ==============================================
+// 🔍 LOG DE DEPURACIÓN
+// ==============================================
 app.use((req, res, next) => {
   console.log(`🛰️ ${req.method} ${req.url} desde ${req.headers.origin}`);
   next();
@@ -148,9 +154,9 @@ app.use((err, req, res, next) => {
 });
 
 // ==============================================
-// 🔥 INICIAR SERVIDOR
+// 🔥 INICIAR SERVIDOR (compatibilidad con Railway)
 // ==============================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
