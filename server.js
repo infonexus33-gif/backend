@@ -15,29 +15,14 @@ const authRoutes = require("./routes/auth");
 dotenv.config();
 const app = express();
 
-// ==============================================
-// ⚙️ CONFIGURACIÓN CORS (completamente abierta para depurar)
-// ==============================================
-const allowedOrigins = [
-  "https://pipiplanner.netlify.app",
-  "http://localhost:5500",
-  "http://127.0.0.1:5500",
-];
+app.use(cors({
+  origin: ["https://pipiplanner.netlify.app"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
 
 // ==============================================
 // 🧠 PARSEO DE REQUESTS (muy importante para req.body)
