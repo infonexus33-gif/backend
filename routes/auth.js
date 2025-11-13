@@ -1,32 +1,51 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { getDB } = require("../db");
 
+const SECRET = process.env.JWT_SECRET || "superclave";
+
+// LOGIN
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { nombre, password } = req.body;
 
   try {
     const db = await getDB();
-    const [rows] = await db.query("SELECT * FROM admins WHERE username=?", [username]);
 
-    if (rows.length === 0) return res.status(401).json({ error: "Usuario no encontrado" });
+    // 🔥 CAMBIO IMPORTANTE:
+    // Antes estaba:
+    // SELECT * FROM admins WHERE username = ?
+    // Pero tu tabla tiene "nombre"
+    const [rows] = await db.query(
+      "SELECT * FROM admins WHERE nombre = ?",
+      [nombre]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
 
     const user = rows[0];
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(403).json({ error: "Contraseña incorrecta" });
+    // Verificar password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
 
+    // Crear token
     const token = jwt.sign(
-      { id: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: "12h" }
+      { id: user.id, nombre: user.nombre },
+      SECRET,
+      { expiresIn: "7d" }
     );
 
     res.json({ token });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error en login:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
