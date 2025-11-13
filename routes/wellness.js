@@ -1,82 +1,96 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db");
+const { getDB } = require("../db");
 
-// === MOOD TRACKER ===
+// =======================
+// 🎭 MOOD TRACKER
+// =======================
 router.post("/mood", async (req, res) => {
-  const { user_id = 1, date, mood, energy } = req.body;
+  const { mood, energy } = req.body;
+  const userId = req.admin.id;
+
   try {
+    const db = await getDB();
+
     await db.query(
-      "INSERT INTO mood_tracker (user_id, date, mood, energy) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE mood=?, energy=?",
-      [user_id, date, mood, energy, mood, energy]
+      `INSERT INTO mood_tracker (date, mood, energy, user_id)
+       VALUES (CURDATE(), ?, ?, ?)
+       ON DUPLICATE KEY UPDATE mood = VALUES(mood), energy = VALUES(energy)`,
+      [mood, energy, userId]
     );
-    res.json({ success: true, message: "Estado de ánimo registrado." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    res.json({ message: "Estado guardado" });
+  } catch (e) {
+    console.error("❌ Error en /mood:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// === TIMELINE ===
+// =======================
+// 📌 TIMELINE
+// =======================
 router.post("/timeline", async (req, res) => {
-  const { user_id = 1, content } = req.body;
-  try {
-    await db.query("INSERT INTO timeline_entries (user_id, content) VALUES (?, ?)", [user_id, content]);
-    res.json({ success: true, message: "Entrada agregada al timeline." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  const { content } = req.body;
+  const userId = req.admin.id;
 
-router.get("/timeline", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM timeline_entries ORDER BY date DESC");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// === HABIT TRACKER ===
-router.post("/habits", async (req, res) => {
-  const { user_id = 1, day, completed } = req.body;
-  try {
+    const db = await getDB();
     await db.query(
-      "INSERT INTO habits (user_id, day, completed) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE completed=?",
-      [user_id, day, completed, completed]
+      "INSERT INTO timeline_entries (content, date, user_id) VALUES (?, NOW(), ?)",
+      [content, userId]
     );
-    res.json({ success: true, message: "Hábito actualizado." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    res.json({ message: "Entrada agregada" });
+  } catch (e) {
+    console.error("❌ Error en /timeline:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// === LISTA DE TAREAS ===
+// =======================
+// 🧩 TASKS
+// =======================
 router.post("/tasks", async (req, res) => {
-  const { user_id = 1, categoria, titulo } = req.body;
+  const { categoria, titulo } = req.body;
+  const userId = req.admin.id;
+
   try {
-    await db.query("INSERT INTO tasks (user_id, categoria, titulo) VALUES (?, ?, ?)", [user_id, categoria, titulo]);
-    res.json({ success: true, message: "Tarea agregada." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const db = await getDB();
+    await db.query(
+      "INSERT INTO tasks (categoria, titulo, user_id) VALUES (?, ?, ?)",
+      [categoria, titulo, userId]
+    );
+
+    res.json({ message: "Tarea agregada" });
+  } catch (e) {
+    console.error("❌ Error en /tasks:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-router.get("/tasks", async (req, res) => {
-  try {
-    const [rows] = await db.query("SELECT * FROM tasks ORDER BY fecha_creacion DESC");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// =======================
+// 🔁 HABITS
+// =======================
+router.post("/habits", async (req, res) => {
+  const { day, completed } = req.body;
+  const userId = req.admin.id;
 
-router.patch("/tasks/:id", async (req, res) => {
-  const { completada } = req.body;
   try {
-    await db.query("UPDATE tasks SET completada=? WHERE id=?", [completada, req.params.id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const db = await getDB();
+
+    await db.query(
+      `
+      INSERT INTO habits (day, completed, user_id)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE completed = VALUES(completed)
+    `,
+      [day, completed, userId]
+    );
+
+    res.json({ message: "Hábito actualizado" });
+  } catch (e) {
+    console.error("❌ Error en /habits:", e);
+    res.status(500).json({ error: e.message });
   }
 });
 
